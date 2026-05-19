@@ -172,7 +172,7 @@ textarea{resize:vertical;min-height:64px}
 <body>
 <div id="toast"></div>
 <header class="topbar">
-  <div class="logo" id="logo-home">
+  <div class="logo" id="logo-home" onclick="window._goHome()">
     <div class="logo-mark">⚖️</div>
     <div>
       <div class="logo-name">Fin<span>Split</span></div>
@@ -381,12 +381,28 @@ async function renderHome(){
           <div class="trip-stat">Created <span>${t.createdAt?.slice(0,10)||"—"}</span></div>
           ${t.description?`<div class="trip-stat" style="color:var(--text3);font-style:italic;font-size:11px">${t.description}</div>`:""}
         </div>
+        ${adm?`<button class="btn btn-danger btn-sm" style="margin-top:12px;width:100%;justify-content:center" data-delete-trip="${t.id}" onclick="event.stopPropagation()">🗑 Delete Trip</button>`:""}
       </div>`;
     }).join("");
     document.querySelectorAll(".trip-card[data-trip]").forEach(c=>c.addEventListener("click",()=>openTrip(c.dataset.trip)));
+    document.querySelectorAll("[data-delete-trip]").forEach(b=>b.addEventListener("click",async()=>{
+      const tid=b.dataset.deleteTrip;
+      const tname=myTrips.find(t=>t.id===tid)?.name||"this trip";
+      if(!confirm(`Delete "${tname}"? This cannot be undone.`)) return;
+      toast("Deleting…","info");
+      const subCols=["members","expenses","activities","settlements"];
+      for(const col of subCols){
+        const snap=await getDocs(collection(db,"trips",tid,col));
+        const batch=writeBatch(db);
+        snap.docs.forEach(d=>batch.delete(d.ref));
+        await batch.commit();
+      }
+      await deleteDoc(tRef(tid));
+      toast("Trip deleted","info");
+      await renderHome();
+    }));
   }
   document.getElementById("b-create-trip")?.addEventListener("click",showCreateModal);
-  document.getElementById("logo-home")?.addEventListener("click",()=>{stopListener();goHome();});
 }
 
 function goHome(){trip=null;members=[];expenses=[];activities=[];settlements=[];history.pushState({},"",location.pathname);renderHome();}
@@ -531,7 +547,7 @@ function renderTrip(){
   bindTrip();
   document.getElementById("b-back")?.addEventListener("click",()=>{stopListener();goHome();});
   document.getElementById("b-share")?.addEventListener("click",()=>{copyLink();});
-  document.getElementById("logo-home")?.addEventListener("click",()=>{stopListener();goHome();});
+
 }
 
 function copyLink(){const u=shareUrl(trip.id);navigator.clipboard?.writeText(u).then(()=>toast("Link copied!","success")).catch(()=>toast(u,"info"));}
@@ -739,6 +755,11 @@ function bindTrip(){
 }
 
 // ══════════════════════════════
+//  GLOBAL NAV (used by onclick)
+// ══════════════════════════════
+window._goHome = () => { stopListener(); goHome(); };
+
+// ══════════════════════════════
 //  AUTH STATE
 // ══════════════════════════════
 onAuthStateChanged(auth,async u=>{
@@ -751,7 +772,7 @@ onAuthStateChanged(auth,async u=>{
 </script>
 
 <footer style="text-align:center;padding:14px 28px;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;border-top:1px solid var(--border);background:var(--surface);margin-top:40px">
-  FinSplit · Split trip expenses fairly · Vibe Coded by KM GOPAL ·
+  FinSplit · Split trip expenses fairly · Powered by Firebase · Free forever
 </footer>
 </body>
 </html>
