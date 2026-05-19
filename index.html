@@ -624,7 +624,7 @@ function rExp(){
 
 function rRow(e){
   const pp=e.participants||approvedNames(),sh=(e.amount/pp.length).toFixed(2);
-  return`<div class="exp-row"><div class="exp-icon">${ICON(e.activity)}</div><div class="exp-body"><div class="exp-name">${e.description}<span class="exp-tag">${e.activity}</span></div><div class="exp-meta">Paid by ${e.paidBy} · ${e.date} · ${pp.length} people</div><div class="exp-meta">👥 ${pp.join(", ")}</div></div><div class="exp-right"><div class="exp-amt">$${(+e.amount).toFixed(2)}</div><div class="exp-per">$${sh}/person</div>${isAdmin()?`<button class="btn btn-danger btn-sm" style="margin-top:5px" data-del="${e.id}">Remove</button>`:""}</div></div>`;
+  return`<div class="exp-row"><div class="exp-icon">${ICON(e.activity)}</div><div class="exp-body"><div class="exp-name">${e.description}<span class="exp-tag">${e.activity}</span></div><div class="exp-meta">Paid by ${e.paidBy} · ${e.date} · ${pp.length} people</div><div class="exp-meta">👥 ${pp.join(", ")}</div></div><div class="exp-right"><div class="exp-amt">$${(+e.amount).toFixed(2)}</div><div class="exp-per">$${sh}/person</div>${(isAdmin()||e.paidBy===myName())?`<button class="btn btn-danger btn-sm" style="margin-top:5px" data-del="${e.id}">Remove</button>`:""}</div></div>`;
 }
 
 function rSettle(){
@@ -645,7 +645,7 @@ function rMembers(){
 function rExpModal(){
   const today=new Date().toISOString().split("T")[0];
   const names=approvedNames();
-  return`<div class="overlay" id="ov"><div class="modal"><div class="modal-hd">Add Expense <button class="x-btn" id="b-close">✕</button></div><div class="form-grid"><div class="fg full"><label>Description *</label><input id="e-desc" placeholder="e.g. Dinner at the harbour"/></div><div class="fg"><label>Amount (CAD) *</label><input id="e-amt" type="number" placeholder="0.00" step="0.01" min="0"/></div><div class="fg"><label>Date</label><input id="e-date" type="date" value="${today}"/></div><div class="fg"><label>Paid By *</label><select id="e-paid">${names.map(n=>`<option value="${n}"${n===myName()?" selected":""}>${n}</option>`).join("")}</select></div><div class="fg"><label>Activity</label><select id="e-act">${activities.map(a=>`<option>${a.name}</option>`).join("")}</select></div><div class="fg full"><label>Who's splitting this?</label><div class="check-group" id="e-pp">${names.map(n=>`<label class="check-chip on" data-m="${n}"><input type="checkbox" checked value="${n}"/>${n}</label>`).join("")}</div></div><div class="fg full"><label>Notes (optional)</label><textarea id="e-notes" placeholder="Any notes…"></textarea></div><div class="fg full"><button class="btn btn-primary" id="b-saveexp" style="width:100%;padding:10px;justify-content:center">Save Expense</button></div></div></div></div>`;
+  return`<div class="overlay" id="ov"><div class="modal"><div class="modal-hd">Add Expense <button class="x-btn" id="b-close">✕</button></div><div class="form-grid"><div class="fg full"><label>Description *</label><input id="e-desc" placeholder="e.g. Dinner at the harbour"/></div><div class="fg"><label>Amount (CAD) *</label><input id="e-amt" type="number" placeholder="0.00" step="0.01" min="0"/></div><div class="fg"><label>Date</label><input id="e-date" type="date" value="${today}"/></div><div class="fg"><label>Paid By *</label><select id="e-paid">${names.map(n=>`<option value="${n}"${n===myName()?" selected":""}>${n}</option>`).join("")}</select></div><div class="fg"><label>Activity</label><select id="e-act">${activities.map(a=>`<option>${a.name}</option>`).join("")}</select></div><div class="fg full"><label>Who's splitting this?</label><div class="check-group" id="e-pp">${names.map(n=>`<div class="check-chip on" data-m="${n}">${n}</div>`).join("")}</div></div><div class="fg full"><label>Notes (optional)</label><textarea id="e-notes" placeholder="Any notes…"></textarea></div><div class="fg full"><button class="btn btn-primary" id="b-saveexp" style="width:100%;padding:10px;justify-content:center">Save Expense</button></div></div></div></div>`;
 }
 function rActModal(){return`<div class="overlay" id="ov"><div class="modal" style="max-width:360px"><div class="modal-hd">New Activity <button class="x-btn" id="b-close">✕</button></div><div class="form-grid"><div class="fg"><label>Activity Name</label><input id="a-name" placeholder="e.g. Boat Tour"/></div><div class="fg"><label>Icon (emoji)</label><input id="a-icon" placeholder="e.g. 🚤" maxlength="2"/></div></div><button class="btn btn-primary" id="b-saveact" style="width:100%;margin-top:14px;padding:10px;justify-content:center">Create</button></div></div>`;}
 function rResetModal(){return`<div class="overlay" id="ov"><div class="modal" style="max-width:380px"><div class="modal-hd">Delete Trip <button class="x-btn" id="b-close">✕</button></div><div class="warn-note">⚠ This permanently deletes the trip and ALL its data from Firestore — expenses, members, activities, settlements. Cannot be undone.</div><div class="fg" style="margin-bottom:14px"><label>Type DELETE to confirm</label><input id="reset-confirm" placeholder="DELETE" style="border-color:var(--red-border)"/></div><button class="btn btn-danger" id="b-do-reset" style="width:100%;padding:10px;justify-content:center">🗑 Delete Everything</button></div></div>`;}
@@ -678,7 +678,7 @@ function bindTrip(){
   document.getElementById("ov")?.addEventListener("click",e=>{if(e.target.id==="ov"){modal=null;renderTrip();}});
   document.getElementById("b-copy")?.addEventListener("click",copyLink);
 
-  document.querySelectorAll(".check-chip[data-m]").forEach(c=>c.addEventListener("click",()=>{c.classList.toggle("on");c.querySelector("input").checked=c.classList.contains("on");}));
+  document.querySelectorAll(".check-chip[data-m]").forEach(c=>c.addEventListener("click",()=>{c.classList.toggle("on");}));
 
   // Save expense → add to expenses sub-collection
   document.getElementById("b-saveexp")?.addEventListener("click",async()=>{
@@ -688,7 +688,7 @@ function bindTrip(){
     const paid=document.getElementById("e-paid").value;
     const act=document.getElementById("e-act").value;
     const notes=document.getElementById("e-notes").value.trim();
-    const pp=[...document.querySelectorAll(".check-chip.on")].map(c=>c.dataset.m);
+    const pp=[...document.querySelectorAll("#e-pp .check-chip.on")].map(c=>c.dataset.m);
     if(!desc||isNaN(amt)||amt<=0){toast("Enter description and amount","error");return;}
     if(!pp.length){toast("Select at least one participant","error");return;}
     const id=genId();
@@ -772,7 +772,7 @@ onAuthStateChanged(auth,async u=>{
 </script>
 
 <footer style="text-align:center;padding:14px 28px;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;border-top:1px solid var(--border);background:var(--surface);margin-top:40px">
-  FinSplit · Split trip expenses fairly · Vibe Coded by Kanaga Manikandan Gopal
+  FinSplit · Split trip expenses fairly · Vibe coded by Kanaga Manikandan Gopal
 </footer>
 </body>
 </html>
