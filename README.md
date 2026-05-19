@@ -1,0 +1,2 @@
+# finsplit
+Trip Finance tracker
