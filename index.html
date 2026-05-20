@@ -250,6 +250,7 @@ textarea{resize:vertical;min-height:64px}
       <div class="trip-dates-hd" id="trip-dates-hd">—</div>
     </div>
     <button class="share-btn" id="b-share">🔗 Share Link</button>
+    <span id="edit-trip-btn-wrap"></span>
   </div>
   <div class="page">
     <div id="kpi-strip"></div>
@@ -551,13 +552,16 @@ function renderTrip(){
   document.getElementById("trip-name-hd").textContent=trip.name;
   document.getElementById("trip-dates-hd").textContent=[trip.startDate,trip.endDate].filter(Boolean).join(" → ")||"No dates set";
   document.getElementById("kpi-strip").innerHTML=rKPI();
+  const etWrap=document.getElementById("edit-trip-btn-wrap");
+  if(etWrap&&isAdmin())etWrap.innerHTML=`<button class="btn btn-ghost btn-sm" id="b-edit-trip-hdr" style="margin-left:6px">✏️ Edit Trip</button>`;
   document.getElementById("tab-bar").innerHTML=rTabs();
   document.getElementById("tab-content").innerHTML=
     tab==="dashboard"?rDash():tab==="expenses"?rExp():
     tab==="settlements"?rSettle():tab==="members"?rMembers():
     tab==="finalytics"?rFinalytics():"";
   document.getElementById("modal-area").innerHTML=
-    modal==="expense"?rExpModal():modal==="edit-expense"?rEditExpModal():
+    modal==="expense"?rExpModal():
+    (modal&&modal.startsWith("edit-expense:"))?rEditExpModal():
     modal==="activity"?rActModal():modal==="reset"?rResetModal():
     modal==="edit-trip"?rEditTripModal():"";
   bindTrip();
@@ -565,6 +569,7 @@ function renderTrip(){
   if(tab==="finalytics")setTimeout(renderCharts,50);
   document.getElementById("b-back")?.addEventListener("click",()=>{stopListener();goHome();});
   document.getElementById("b-share")?.addEventListener("click",copyLink);
+  document.getElementById("b-edit-trip-hdr")?.addEventListener("click",()=>{modal="edit-trip";renderTrip();});
 }
 
 function copyLink(){const u=shareUrl(trip.id);navigator.clipboard?.writeText(u).then(()=>toast("Link copied!","success")).catch(()=>toast(u,"info"));}
@@ -761,7 +766,8 @@ function rExpModal(){
 }
 
 function rEditExpModal(){
-  const e=expenses.find(x=>x.id===modal.split(":")[1]);
+  const eid=modal.split(":").slice(1).join(":");
+  const e=expenses.find(x=>x.id===eid);
   if(!e)return"";
   const names=approvedNames();
   const selPP=e.participants||names;
