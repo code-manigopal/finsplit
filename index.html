@@ -621,11 +621,16 @@ function rKPI(){
   </div>`;
 }
 
-function rTabs(){
-  return[["dashboard","📊 Dashboard"],["expenses","💸 Expenses"],["settlements","🔄 Settle Up"],["members","👥 Members"],["finalytics","📈 Finalytics"]]
-    .map(([id,l])=>`<button class="tab${tab===id?" active":""}${id==="finalytics"?" finalytics":""}" data-tab="${id}">${l}</button>`).join("");
-}
+// function rTabs(){
+//   return[["dashboard","📊 Dashboard"],["expenses","💸 Expenses"],["settlements","🔄 Settle Up"],["members","👥 Members"],["finalytics","📈 Finalytics"]]
+//     .map(([id,l])=>`<button class="tab${tab===id?" active":""}${id==="finalytics"?" finalytics":""}" data-tab="${id}">${l}</button>`).join("");
+// }
 
+function rTabs(){
+  return [["dashboard","📊 Dashboard"],["expenses","💸 Expenses"],["settlements","🔄 Settle Up"],["members","👥 Members"],["finalytics","📈 Finalytics"]]
+  .map(([id,label]) =>`<button class="tab${tab===id ? " active" : ""}" data-tab="${id}">${label}</button>`).join("");
+}
+  
 // ── DASHBOARD ──
 function rDash(){
   const byAct={};activities.forEach(a=>byAct[a.name]=0);
