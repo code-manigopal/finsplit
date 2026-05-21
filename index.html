@@ -416,8 +416,9 @@ async function renderHome(){
     bindTripCards(archGrid);
   } else { archSec.style.display="none"; }
 
-  document.getElementById("b-create-trip")?.addEventListener("click",showCreateModal);
-  document.getElementById("b-toggle-archived")?.addEventListener("click",()=>{showArchived=!showArchived;renderHome();});
+  // Use onclick (not addEventListener) so it replaces instead of stacking
+  document.getElementById("b-create-trip").onclick=showCreateModal;
+  document.getElementById("b-toggle-archived").onclick=()=>{showArchived=!showArchived;renderHome();};
 }
 
 function tripCard(t){
