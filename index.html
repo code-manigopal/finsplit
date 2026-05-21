@@ -693,9 +693,9 @@ function rSettle(){
   </div>
 
   ${otherPend.length||otherDone.length?`
-  <div class="sc" style="border-color:var(--border);opacity:.85">
-    <div class="sc-title" style="color:var(--text2)">Other Transfers <span class="sc-sub">${otherPend.length} pending</span></div>
-    <div style="font-size:11px;color:var(--text3);margin-bottom:12px">These transfers are between other members — shown for transparency.</div>
+  <div class="sc">
+    <div class="sc-title">Other Transfers <span class="sc-sub">${otherPend.length} pending</span></div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:12px">These transfers are between your friends in this trip.</div>
     ${otherPend.map(t=>renderPendRow(t,false)).join("")}
     ${otherDone.length?`<div class="divider"></div>
     <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Completed</div>
