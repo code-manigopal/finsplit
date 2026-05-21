@@ -305,10 +305,27 @@ async function loadSubCollections(tripId){
 function startListener(tripId){
   stopListener();
   const us=[];
-  us.push(onSnapshot(subCol(tripId,"members"),snap=>{members=snap.docs.map(d=>({id:d.id,...d.data()}));if(!isPending())renderTrip();else{showScreen("screen-pending");rAuthBar();}}));
-  us.push(onSnapshot(subCol(tripId,"expenses"),snap=>{expenses=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.date||"").localeCompare(b.date||""));if(!isPending())renderTrip();}));
-  us.push(onSnapshot(subCol(tripId,"activities"),snap=>{if(snap.docs.length)activities=snap.docs.map(d=>({id:d.id,...d.data()}));if(!isPending())renderTrip();}));
-  us.push(onSnapshot(subCol(tripId,"settlements"),snap=>{settlements=snap.docs.map(d=>({id:d.id,...d.data()}));if(!isPending())renderTrip();}));
+  // Guard: if trip is null (user navigated away), skip render
+  us.push(onSnapshot(subCol(tripId,"members"),snap=>{
+    if(!trip||trip.id!==tripId)return;
+    members=snap.docs.map(d=>({id:d.id,...d.data()}));
+    if(!isPending())renderTrip();else{showScreen("screen-pending");rAuthBar();}
+  }));
+  us.push(onSnapshot(subCol(tripId,"expenses"),snap=>{
+    if(!trip||trip.id!==tripId)return;
+    expenses=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+    if(!isPending())renderTrip();
+  }));
+  us.push(onSnapshot(subCol(tripId,"activities"),snap=>{
+    if(!trip||trip.id!==tripId)return;
+    if(snap.docs.length)activities=snap.docs.map(d=>({id:d.id,...d.data()}));
+    if(!isPending())renderTrip();
+  }));
+  us.push(onSnapshot(subCol(tripId,"settlements"),snap=>{
+    if(!trip||trip.id!==tripId)return;
+    settlements=snap.docs.map(d=>({id:d.id,...d.data()}));
+    if(!isPending())renderTrip();
+  }));
   unsubTrip=()=>us.forEach(u=>u());
 }
 function stopListener(){if(unsubTrip){unsubTrip();unsubTrip=null;}}
