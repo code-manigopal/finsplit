@@ -601,6 +601,7 @@ function calcSettlements(){
 }
 function netBal(name){let b=0;expenses.forEach(e=>{const pp=e.participants||approvedNames();if(e.paidBy===name)b+=e.amount;if(pp.includes(name))b-=e.amount/pp.length;});return +b.toFixed(2);}
 function isDone(from,to){return settlements.some(s=>s.from===from&&s.to===to&&s.done);}
+function getSettlementId(from,to){return settlements.find(s=>s.from===from&&s.to===to&&s.done)?.id||null;}
 
 // ── KPI ──
 function rKPI(){
@@ -621,16 +622,11 @@ function rKPI(){
   </div>`;
 }
 
-// function rTabs(){
-//   return[["dashboard","📊 Dashboard"],["expenses","💸 Expenses"],["settlements","🔄 Settle Up"],["members","👥 Members"],["finalytics","📈 Finalytics"]]
-//     .map(([id,l])=>`<button class="tab${tab===id?" active":""}${id==="finalytics"?" finalytics":""}" data-tab="${id}">${l}</button>`).join("");
-// }
-
 function rTabs(){
-  return [["dashboard","📊 Dashboard"],["expenses","💸 Expenses"],["settlements","🔄 Settle Up"],["members","👥 Members"],["finalytics","📈 Finalytics"]]
-  .map(([id,label]) =>`<button class="tab${tab===id ? " active" : ""}" data-tab="${id}">${label}</button>`).join("");
+  return[["dashboard","📊 Dashboard"],["expenses","💸 Expenses"],["settlements","🔄 Settle Up"],["members","👥 Members"],["finalytics","📈 Finalytics"]]
+    .map(([id,l])=>`<button class="tab${tab===id?" active":""}${id==="finalytics"?" finalytics":""}" data-tab="${id}">${l}</button>`).join("");
 }
-  
+
 // ── DASHBOARD ──
 function rDash(){
   const byAct={};activities.forEach(a=>byAct[a.name]=0);
@@ -661,7 +657,7 @@ function rSettle(){
   if(!txns.length)return`<div class="sc"><div class="empty"><div class="empty-icon">🎉</div><p>All settled!</p></div></div>`;
   const pend=txns.filter(t=>!isDone(t.from,t.to));
   const done=txns.filter(t=>isDone(t.from,t.to));
-  return`<div class="sc"><div class="sc-title">Pending Transfers <span class="sc-sub">${pend.length} remaining</span></div>${pend.map(t=>`<div class="settle-row"><span class="settle-from">${t.from}</span><span class="settle-arrow"> → </span><span class="settle-to">${t.to}</span><span class="settle-amt">${fmt(t.amount)}</span><button class="btn btn-green btn-sm" data-settle-from="${t.from}" data-settle-to="${t.to}">✓ Mark Done</button></div>`).join("")}${done.length?`<div class="divider"></div><div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Completed</div>${done.map(t=>`<div class="settle-row" style="opacity:.5"><span class="settle-from">${t.from}</span><span class="settle-arrow"> → </span><span class="settle-to">${t.to}</span><span class="settle-amt">${fmt(t.amount)}</span><span class="badge-done">✓ Done</span></div>`).join("")}`:""}</div><div class="sc"><div class="sc-title">Breakdown by Activity</div>${activities.map(act=>{const ex=expenses.filter(e=>e.activity===act.name);if(!ex.length)return"";return`<div style="margin-bottom:14px"><div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px">${act.icon||"💰"} ${act.name} — ${fmt(ex.reduce((s,e)=>s+e.amount,0))}</div>${ex.map(e=>`<div style="font-size:12px;color:var(--text2);margin-left:14px;margin-bottom:2px;font-family:'DM Mono',monospace">• ${e.description}: ${fmt(e.amount)} (${e.paidBy})</div>`).join("")}</div>`;}).join("")}</div>`;
+  return`<div class="sc"><div class="sc-title">Pending Transfers <span class="sc-sub">${pend.length} remaining</span></div>${pend.map(t=>`<div class="settle-row"><span class="settle-from">${t.from}</span><span class="settle-arrow"> → </span><span class="settle-to">${t.to}</span><span class="settle-amt">${fmt(t.amount)}</span><button class="btn btn-green btn-sm" data-settle-from="${t.from}" data-settle-to="${t.to}">✓ Mark Done</button></div>`).join("")}${done.length?`<div class="divider"></div><div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Completed</div>${done.map(t=>{const sid=getSettlementId(t.from,t.to);return`<div class="settle-row"><span class="settle-from">${t.from}</span><span class="settle-arrow"> → </span><span class="settle-to">${t.to}</span><span class="settle-amt">${fmt(t.amount)}</span><span class="badge-done">✓ Done</span>${sid?`<button class="btn btn-ghost btn-sm" data-undo-settle="${sid}">↩ Undo</button>`:""}</div>`;}).join("")}`:""}</div><div class="sc"><div class="sc-title">Breakdown by Activity</div>${activities.map(act=>{const ex=expenses.filter(e=>e.activity===act.name);if(!ex.length)return"";return`<div style="margin-bottom:14px"><div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px">${act.icon||"💰"} ${act.name} — ${fmt(ex.reduce((s,e)=>s+e.amount,0))}</div>${ex.map(e=>`<div style="font-size:12px;color:var(--text2);margin-left:14px;margin-bottom:2px;font-family:'DM Mono',monospace">• ${e.description}: ${fmt(e.amount)} (${e.paidBy})</div>`).join("")}</div>`;}).join("")}</div>`;
 }
 
 // ── MEMBERS ──
@@ -827,7 +823,7 @@ function bindTrip(){
     if(!pp.length){toast("Select at least one participant","error");return;}
     const id=genId();
     await setDoc(subDoc(trip.id,"expenses",id),{id,description:desc,amount:amt,date,paidBy:paid,activity:act,notes,participants:pp,createdAt:new Date().toISOString()});
-    modal=null;toast("Expense saved","success");
+    modal=null;renderTrip();toast("Expense saved","success");
   });
 
   // Edit expense — open modal
@@ -846,7 +842,7 @@ function bindTrip(){
     if(!desc||isNaN(amt)||amt<=0){toast("Enter description and amount","error");return;}
     if(!pp.length){toast("Select at least one participant","error");return;}
     await updateDoc(subDoc(trip.id,"expenses",eid),{description:desc,amount:amt,date,paidBy:paid,activity:act,notes,participants:pp,updatedAt:new Date().toISOString()});
-    modal=null;toast("Expense updated","success");
+    modal=null;renderTrip();toast("Expense updated","success");
   });
 
   // Save activity
@@ -860,6 +856,12 @@ function bindTrip(){
 
   // Delete expense
   document.querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click",async()=>{await deleteDoc(subDoc(trip.id,"expenses",b.dataset.del));toast("Removed","info");}));
+
+  // Undo settlement
+  document.querySelectorAll("[data-undo-settle]").forEach(b=>b.addEventListener("click",async()=>{
+    await deleteDoc(subDoc(trip.id,"settlements",b.dataset.undoSettle));
+    toast("Settlement undone","info");
+  }));
 
   // Mark settlement — any member can mark done
   document.querySelectorAll("[data-settle-from]").forEach(b=>b.addEventListener("click",async()=>{
@@ -913,8 +915,8 @@ onAuthStateChanged(auth,async u=>{
 });
 </script>
 
-<footer style="text-align:center;padding:14px 28px;font-size:11px;color:var(--text3);font-family:'UN Mono',monospace;border-top:1px solid var(--border);background:var(--surface);position:fixed;bottom:0;left:0;right:0;z-index:50">
-  FinSplit · Split trip expenses fairly · Vibe coded by Kanaga Manikandan Gopal
+<footer style="text-align:center;padding:14px 28px;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;border-top:1px solid var(--border);background:var(--surface);position:fixed;bottom:0;left:0;right:0;z-index:50">
+  FinSplit · Split trip expenses fairly · Powered by Firebase · Vibe coded by Kanaga Manikandan Gopal
 </footer>
 </body>
 </html>
