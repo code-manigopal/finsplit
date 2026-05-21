@@ -15,7 +15,6 @@ const FB = {
   appId:"1:585256105192:web:ed2d38a97fe81d064c055d"
 };
 
-// ── CURRENCIES ──
 const CURRENCIES = [
   {code:"CAD",symbol:"$",name:"Canadian Dollar"},
   {code:"USD",symbol:"$",name:"US Dollar"},
@@ -81,16 +80,21 @@ const approvedNames=()=>{
 };
 const shareUrl=id=>`${location.origin}${location.pathname}?trip=${id}`;
 const tripIdFromUrl=()=>new URLSearchParams(location.search).get("trip");
-
-// Currency helpers
 const getCurrency=()=>CURRENCIES.find(c=>c.code===(trip?.currency||"CAD"))||CURRENCIES[0];
 const fmt=amt=>`${getCurrency().symbol}${parseFloat(amt||0).toFixed(2)}`;
 const fmtLabel=()=>getCurrency().code;
 
 let _tid;
-function toast(msg,type="success"){const t=document.getElementById("toast");clearTimeout(_tid);t.textContent=msg;t.className="show "+type;_tid=setTimeout(()=>t.className="",2800);}
+function toast(msg,type="success"){
+  const t=document.getElementById("toast");
+  clearTimeout(_tid);t.textContent=msg;t.className="show "+type;
+  _tid=setTimeout(()=>t.className="",2800);
+}
 
-function showScreen(id){["screen-loading","screen-signin","screen-pending","screen-home","screen-trip"].forEach(s=>document.getElementById(s).classList.toggle("active",s===id));}
+function showScreen(id){
+  ["screen-loading","screen-signin","screen-pending","screen-home","screen-trip"]
+    .forEach(s=>document.getElementById(s).classList.toggle("active",s===id));
+}
 
 function rAuthBar(){
   const bar=document.getElementById("auth-bar");
@@ -114,6 +118,7 @@ async function loadMyTrips(){
   const s2=await getDocs(q2);s2.forEach(d=>{if(!myTrips.find(t=>t.id===d.id))myTrips.push({id:d.id,...d.data()});});
 }
 
+// ── FIX 2: renderHome — use onclick on static buttons to avoid stacking listeners ──
 async function renderHome(){
   rAuthBar();showScreen("screen-home");
   document.getElementById("home-greeting").textContent=`Welcome, ${(user.displayName||user.email).split(" ")[0]}`;
@@ -122,7 +127,13 @@ async function renderHome(){
   const archived=myTrips.filter(t=>t.archived);
   const grid=document.getElementById("trips-grid");
   const btn=document.getElementById("b-toggle-archived");
-  if(btn)btn.textContent=showArchived?"Hide Archived":`Show Archived (${archived.length})`;
+  if(btn){
+    btn.textContent=showArchived?"Hide Archived":`Show Archived (${archived.length})`;
+    // Use onclick to avoid stacking addEventListener on each renderHome call
+    btn.onclick=()=>{showArchived=!showArchived;renderHome();};
+  }
+  const createBtn=document.getElementById("b-create-trip");
+  if(createBtn) createBtn.onclick=showCreateModal;
 
   if(!active.length){
     grid.innerHTML=`<div class="empty" style="grid-column:1/-1"><div class="empty-icon">✈️</div><p>No trips yet.<br>Create your first trip!</p></div>`;
@@ -137,10 +148,9 @@ async function renderHome(){
     archSec.style.display="block";
     archGrid.innerHTML=archived.map(t=>tripCard(t)).join("");
     bindTripCards(archGrid);
-  } else { archSec.style.display="none"; }
-
-  document.getElementById("b-create-trip")?.addEventListener("click",showCreateModal);
-  document.getElementById("b-toggle-archived")?.addEventListener("click",()=>{showArchived=!showArchived;renderHome();});
+  } else {
+    archSec.style.display="none";
+  }
 }
 
 function tripCard(t){
@@ -158,8 +168,8 @@ function tripCard(t){
     </div>
     ${adm?`<div style="display:flex;gap:6px;margin-top:12px">
       ${t.archived
-        ? `<button class="btn btn-ghost btn-sm" style="flex:1;justify-content:center" data-unarchive="${t.id}" onclick="event.stopPropagation()">↩ Unarchive</button>`
-        : `<button class="btn btn-ghost btn-sm" style="flex:1;justify-content:center" data-archive="${t.id}" onclick="event.stopPropagation()">📦 Archive</button>`}
+        ?`<button class="btn btn-ghost btn-sm" style="flex:1;justify-content:center" data-unarchive="${t.id}" onclick="event.stopPropagation()">↩ Unarchive</button>`
+        :`<button class="btn btn-ghost btn-sm" style="flex:1;justify-content:center" data-archive="${t.id}" onclick="event.stopPropagation()">📦 Archive</button>`}
       <button class="btn btn-danger btn-sm" style="flex:1;justify-content:center" data-delete-trip="${t.id}" onclick="event.stopPropagation()">🗑 Delete</button>
     </div>`:""}
   </div>`;
@@ -189,7 +199,11 @@ function bindTripCards(grid){
   }));
 }
 
-function goHome(){trip=null;members=[];expenses=[];activities=[];settlements=[];history.pushState({},"",location.pathname);renderHome();}
+function goHome(){
+  trip=null;members=[];expenses=[];activities=[];settlements=[];
+  history.pushState({},"",location.pathname);
+  renderHome();
+}
 
 function showCreateModal(){
   const today=new Date().toISOString().split("T")[0];
@@ -302,16 +316,15 @@ function renderTrip(){
     modal==="activity"?rActModal():modal==="reset"?rResetModal():
     modal==="edit-trip"?rEditTripModal():"";
   bindTrip();
-  // render charts after DOM
   if(tab==="finalytics")setTimeout(renderCharts,50);
-  document.getElementById("b-back")?.addEventListener("click",()=>{stopListener();goHome();});
-  document.getElementById("b-share")?.addEventListener("click",copyLink);
+  // Use onclick on static topbar buttons to avoid stacking listeners
+  document.getElementById("b-back").onclick=()=>{stopListener();goHome();};
+  document.getElementById("b-share").onclick=copyLink;
   document.getElementById("b-edit-trip-hdr")?.addEventListener("click",()=>{modal="edit-trip";renderTrip();});
 }
 
 function copyLink(){const u=shareUrl(trip.id);navigator.clipboard?.writeText(u).then(()=>toast("Link copied!","success")).catch(()=>toast(u,"info"));}
 
-// ── SETTLEMENT ──
 function calcSettlements(){
   const names=approvedNames();const bal={};names.forEach(n=>bal[n]=0);
   expenses.forEach(e=>{const pp=e.participants||names,sh=e.amount/pp.length;bal[e.paidBy]=(bal[e.paidBy]||0)+e.amount;pp.forEach(p=>bal[p]=(bal[p]||0)-sh);});
@@ -324,8 +337,8 @@ function calcSettlements(){
 }
 function netBal(name){let b=0;expenses.forEach(e=>{const pp=e.participants||approvedNames();if(e.paidBy===name)b+=e.amount;if(pp.includes(name))b-=e.amount/pp.length;});return +b.toFixed(2);}
 function isDone(from,to){return settlements.some(s=>s.from===from&&s.to===to&&s.done);}
+function getSettlementId(from,to){return settlements.find(s=>s.from===from&&s.to===to&&s.done)?.id||null;}
 
-// ── KPI ──
 function rKPI(){
   const total=expenses.reduce((s,e)=>s+e.amount,0);
   const mn=myName();
@@ -344,17 +357,11 @@ function rKPI(){
   </div>`;
 }
 
-// function rTabs(){
-//   return[["dashboard","📊 Dashboard"],["expenses","💸 Expenses"],["settlements","🔄 Settle Up"],["members","👥 Members"],["finalytics","📈 Finalytics"]]
-//     .map(([id,l])=>`<button class="tab${tab===id?" active":""}${id==="finalytics"?" finalytics":""}" data-tab="${id}">${l}</button>`).join("");
-// }
-
 function rTabs(){
-  return [["dashboard","📊 Dashboard"],["expenses","💸 Expenses"],["settlements","🔄 Settle Up"],["members","👥 Members"],["finalytics","📈 Finalytics"]]
-  .map(([id,label]) =>`<button class="tab${tab===id ? " active" : ""}" data-tab="${id}">${label}</button>`).join("");
+  return[["dashboard","📊 Dashboard"],["expenses","💸 Expenses"],["settlements","🔄 Settle Up"],["members","👥 Members"],["finalytics","📈 Finalytics"]]
+    .map(([id,l])=>`<button class="tab${tab===id?" active":""}" data-tab="${id}">${l}</button>`).join("");
 }
-  
-// ── DASHBOARD ──
+
 function rDash(){
   const byAct={};activities.forEach(a=>byAct[a.name]=0);
   expenses.forEach(e=>{byAct[e.activity]=(byAct[e.activity]||0)+e.amount;});
@@ -366,7 +373,6 @@ function rDash(){
   return`<div class="two-col"><div class="sc"><div class="sc-title">Spending by Activity</div>${aRows}</div><div class="sc"><div class="sc-title">Member Balances</div>${mRows}</div></div><div class="sc"><div class="sec-hd"><div class="sec-title">Recent Expenses</div><button class="btn btn-primary btn-sm" id="b-addexp">+ Add Expense</button></div>${recent.length?recent.map(rRow).join(""):`<div class="empty"><div class="empty-icon">💸</div><p>No expenses yet</p></div>`}</div>`;
 }
 
-// ── EXPENSES ──
 function rExp(){
   const fil=actFil==="All"?expenses:expenses.filter(e=>e.activity===actFil);
   return`<div class="sec-hd"><div class="sec-title">All Expenses</div><button class="btn btn-primary btn-sm" id="b-addexp">+ Add Expense</button></div><div class="pills"><div class="pill${actFil==="All"?" active":""}" data-af="All">All</div>${activities.map(a=>`<div class="pill${actFil===a.name?" active":""}" data-af="${a.name}">${a.icon||"💰"} ${a.name}</div>`).join("")}${isAdmin()?`<div class="pill" style="border-style:dashed" id="b-addact">+ Activity</div>`:""}</div><div class="sc">${fil.length?[...fil].reverse().map(rRow).join(""):`<div class="empty"><div class="empty-icon">💸</div><p>No expenses here yet</p></div>`}</div>`;
@@ -378,16 +384,22 @@ function rRow(e){
   return`<div class="exp-row"><div class="exp-icon">${ICON(e.activity)}</div><div class="exp-body"><div class="exp-name">${e.description}<span class="exp-tag">${e.activity}</span></div><div class="exp-meta">Paid by ${e.paidBy} · ${e.date} · ${pp.length} people</div><div class="exp-meta">👥 ${pp.join(", ")}</div>${e.notes?`<div class="exp-meta" style="color:var(--text3);font-style:italic">${e.notes}</div>`:""}</div><div class="exp-right"><div class="exp-amt">${fmt(e.amount)}</div><div class="exp-per">${getCurrency().symbol}${sh}/person · ${fmtLabel()}</div>${canEdit?`<div style="display:flex;gap:4px;margin-top:5px;justify-content:flex-end"><button class="btn btn-ghost btn-sm" data-edit="${e.id}">✏️ Edit</button><button class="btn btn-danger btn-sm" data-del="${e.id}">✕</button></div>`:""}</div></div>`;
 }
 
-// ── SETTLE ──
+// ── FIX 1: Undo settlement — show ↩ Undo on completed rows ──
 function rSettle(){
   const txns=calcSettlements();
   if(!txns.length)return`<div class="sc"><div class="empty"><div class="empty-icon">🎉</div><p>All settled!</p></div></div>`;
   const pend=txns.filter(t=>!isDone(t.from,t.to));
   const done=txns.filter(t=>isDone(t.from,t.to));
-  return`<div class="sc"><div class="sc-title">Pending Transfers <span class="sc-sub">${pend.length} remaining</span></div>${pend.map(t=>`<div class="settle-row"><span class="settle-from">${t.from}</span><span class="settle-arrow"> → </span><span class="settle-to">${t.to}</span><span class="settle-amt">${fmt(t.amount)}</span><button class="btn btn-green btn-sm" data-settle-from="${t.from}" data-settle-to="${t.to}">✓ Mark Done</button></div>`).join("")}${done.length?`<div class="divider"></div><div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Completed</div>${done.map(t=>`<div class="settle-row" style="opacity:.5"><span class="settle-from">${t.from}</span><span class="settle-arrow"> → </span><span class="settle-to">${t.to}</span><span class="settle-amt">${fmt(t.amount)}</span><span class="badge-done">✓ Done</span></div>`).join("")}`:""}</div><div class="sc"><div class="sc-title">Breakdown by Activity</div>${activities.map(act=>{const ex=expenses.filter(e=>e.activity===act.name);if(!ex.length)return"";return`<div style="margin-bottom:14px"><div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px">${act.icon||"💰"} ${act.name} — ${fmt(ex.reduce((s,e)=>s+e.amount,0))}</div>${ex.map(e=>`<div style="font-size:12px;color:var(--text2);margin-left:14px;margin-bottom:2px;font-family:'DM Mono',monospace">• ${e.description}: ${fmt(e.amount)} (${e.paidBy})</div>`).join("")}</div>`;}).join("")}</div>`;
+  return`<div class="sc">
+    <div class="sc-title">Pending Transfers <span class="sc-sub">${pend.length} remaining</span></div>
+    ${pend.map(t=>`<div class="settle-row"><span class="settle-from">${t.from}</span><span class="settle-arrow"> → </span><span class="settle-to">${t.to}</span><span class="settle-amt">${fmt(t.amount)}</span><button class="btn btn-green btn-sm" data-settle-from="${t.from}" data-settle-to="${t.to}">✓ Mark Done</button></div>`).join("")}
+    ${done.length?`<div class="divider"></div>
+    <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Completed</div>
+    ${done.map(t=>{const sid=getSettlementId(t.from,t.to);return`<div class="settle-row"><span class="settle-from">${t.from}</span><span class="settle-arrow"> → </span><span class="settle-to">${t.to}</span><span class="settle-amt">${fmt(t.amount)}</span><span class="badge-done">✓ Done</span>${sid?`<button class="btn btn-ghost btn-sm" data-undo-settle="${sid}">↩ Undo</button>`:""}</div>`;}).join("")}`:""}
+  </div>
+  <div class="sc"><div class="sc-title">Breakdown by Activity</div>${activities.map(act=>{const ex=expenses.filter(e=>e.activity===act.name);if(!ex.length)return"";return`<div style="margin-bottom:14px"><div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px">${act.icon||"💰"} ${act.name} — ${fmt(ex.reduce((s,e)=>s+e.amount,0))}</div>${ex.map(e=>`<div style="font-size:12px;color:var(--text2);margin-left:14px;margin-bottom:2px;font-family:'DM Mono',monospace">• ${e.description}: ${fmt(e.amount)} (${e.paidBy})</div>`).join("")}</div>`;}).join("")}</div>`;
 }
 
-// ── MEMBERS ──
 function rMembers(){
   const approved=members.filter(m=>m.status==="approved");
   const pending=members.filter(m=>m.status==="pending");
@@ -395,7 +407,6 @@ function rMembers(){
   return`<div class="sc"><div class="share-box"><p>🔗 Share this link to invite people to <strong>${trip.name}</strong></p><div class="share-link"><input type="text" value="${url}" readonly/><button class="btn btn-primary btn-sm" id="b-copy">Copy</button></div></div><div class="sc-title">Trip Members <span class="sc-sub">${approved.length+(isAdmin()?1:0)} approved</span></div>${isAdmin()?`<div class="member-row"><div class="m-left"><div class="m-avatar">${trip.adminPhoto?`<img src="${trip.adminPhoto}" style="width:100%;height:100%;object-fit:cover">`:""}</div><div><div class="m-name">${trip.adminName}<span class="badge badge-admin">Admin</span></div><div class="m-email">${trip.createdBy}</div></div></div></div>`:""}${approved.map(m=>{const b=netBal(m.name);const paid=expenses.filter(e=>e.paidBy===m.name).reduce((s,e)=>s+e.amount,0);return`<div class="member-row"><div class="m-left"><div class="m-avatar">${m.photo?`<img src="${m.photo}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentNode.textContent='👤'">`:""}</div><div><div class="m-name">${m.name}<span class="badge badge-member">Member</span></div><div class="m-email">${m.email} · paid ${fmt(paid)}</div></div></div><div style="display:flex;align-items:center;gap:8px"><div style="text-align:right"><div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:${b>=0?"#15803d":"var(--red)"}">${b>=0?"+":""}${fmt(b)}</div><div style="font-size:11px;color:var(--text3)">${b>0?"to receive":b<0?"owes":"even"}</div></div>${isAdmin()?`<button class="btn btn-danger btn-sm" data-kick="${m.id}">Remove</button>`:""}</div></div>`;}).join("")}${!approved.length&&!isAdmin()?`<div class="empty" style="padding:14px 0"><p>No approved members yet</p></div>`:""}</div>${isAdmin()&&pending.length?`<div class="sc" style="border-color:var(--amber-border)"><div class="sc-title" style="color:var(--amber)">Pending Approval <span class="sc-sub">${pending.length} waiting</span></div><div class="info-note" style="background:var(--amber-dim);border-color:var(--amber-border);color:var(--amber)">These people joined via your link and are waiting for approval.</div>${pending.map(m=>`<div class="member-row"><div class="m-left"><div class="m-avatar">${m.photo?`<img src="${m.photo}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentNode.textContent='👤'">`:""}</div><div><div class="m-name">${m.name}<span class="badge badge-pending">Pending</span></div><div class="m-email">${m.email}</div></div></div><div style="display:flex;gap:6px"><button class="btn btn-green btn-sm" data-approve="${m.id}">✓ Approve</button><button class="btn btn-danger btn-sm" data-kick="${m.id}">✕ Reject</button></div></div>`).join("")}</div>`:""}${isAdmin()?`<div class="danger-zone"><div class="dz-title">⚠ Danger Zone</div><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:10px"><div><div style="font-size:13px;font-weight:600;color:var(--text)">Edit trip details</div><div style="font-size:12px;color:var(--text2);margin-top:2px">Change name, dates, description</div></div><button class="btn btn-ghost btn-sm" id="b-edit-trip">✏️ Edit</button></div><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px"><div><div style="font-size:13px;font-weight:600;color:var(--text)">Delete this trip</div><div style="font-size:12px;color:var(--text2);margin-top:2px">Permanently deletes all data.</div></div><button class="btn btn-danger btn-sm" id="b-reset">🗑 Delete Trip</button></div></div>`:""}`;
 }
 
-// ── FINALYTICS ──
 function rFinalytics(){
   const total=expenses.reduce((s,e)=>s+e.amount,0);
   const names=approvedNames();
@@ -432,13 +443,11 @@ function renderCharts(){
   const actLabels=Object.keys(byAct).filter(k=>byAct[k]>0);
   const actData=actLabels.map(k=>+byAct[k].toFixed(2));
   const colors=["#00b386","#C27A00","#4F46E5","#D93025","#0891b2","#7c3aed","#059669","#ea580c"];
-
   const pieCtx=document.getElementById("chart-pie");
   if(pieCtx){
     if(_pieChart){_pieChart.destroy();_pieChart=null;}
     _pieChart=new Chart(pieCtx,{type:"doughnut",data:{labels:actLabels,datasets:[{data:actData,backgroundColor:colors.slice(0,actLabels.length),borderColor:"#fff",borderWidth:3,hoverOffset:6}]},options:{responsive:true,maintainAspectRatio:false,cutout:"65%",plugins:{legend:{position:"bottom",labels:{font:{size:11},padding:10,boxWidth:10}},tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${fmt(ctx.parsed)}`}}}}});
   }
-
   const names=approvedNames();
   const barData=names.map(n=>+expenses.filter(e=>e.paidBy===n).reduce((s,e)=>s+e.amount,0).toFixed(2));
   const barCtx=document.getElementById("chart-bar");
@@ -450,7 +459,6 @@ function renderCharts(){
   document.getElementById("b-export-csv")?.addEventListener("click",exportCSV);
 }
 
-// ── EXPORT PDF ──
 function exportPDF(){
   try{
     const {jsPDF}=window.jspdf;
@@ -463,24 +471,20 @@ function exportPDF(){
     doc.text(`${trip.name} · ${[trip.startDate,trip.endDate].filter(Boolean).join(" → ")||"No dates"}`,20,y);y+=6;
     doc.text(`Currency: ${curr.code} (${curr.symbol}) · Generated: ${new Date().toLocaleDateString()}`,20,y);y+=12;
     doc.setDrawColor(220,220,220);doc.line(20,y,190,y);y+=8;
-    doc.setFontSize(13);doc.setTextColor(26,34,53);
-    doc.text("Expenses",20,y);y+=8;
+    doc.setFontSize(13);doc.setTextColor(26,34,53);doc.text("Expenses",20,y);y+=8;
     doc.setFontSize(10);doc.setTextColor(90,100,120);
     expenses.forEach(e=>{
       if(y>270){doc.addPage();y=20;}
       doc.text(`${e.date} — ${e.description} (${e.activity})`,22,y);
-      doc.text(`${curr.symbol}${e.amount.toFixed(2)} paid by ${e.paidBy}`,22,y+5);
-      y+=12;
+      doc.text(`${curr.symbol}${e.amount.toFixed(2)} paid by ${e.paidBy}`,22,y+5);y+=12;
     });
     y+=4;doc.setDrawColor(220,220,220);doc.line(20,y,190,y);y+=8;
-    doc.setFontSize(13);doc.setTextColor(26,34,53);
-    doc.text("Settlement Summary",20,y);y+=8;
+    doc.setFontSize(13);doc.setTextColor(26,34,53);doc.text("Settlement Summary",20,y);y+=8;
     doc.setFontSize(10);doc.setTextColor(90,100,120);
     const txns=calcSettlements();
     if(!txns.length){doc.text("All settled — no transfers needed!",22,y);}
     else txns.forEach(t=>{if(y>270){doc.addPage();y=20;}doc.text(`${t.from} → ${t.to}: ${curr.symbol}${t.amount.toFixed(2)}${isDone(t.from,t.to)?" ✓ Done":""}`,22,y);y+=7;});
-    y+=8;doc.setFontSize(13);doc.setTextColor(26,34,53);
-    doc.text("Member Balances",20,y);y+=8;
+    y+=8;doc.setFontSize(13);doc.setTextColor(26,34,53);doc.text("Member Balances",20,y);y+=8;
     doc.setFontSize(10);doc.setTextColor(90,100,120);
     approvedNames().forEach(n=>{if(y>270){doc.addPage();y=20;}const b=netBal(n);doc.text(`${n}: ${b>=0?"+":""}${curr.symbol}${Math.abs(b).toFixed(2)} (${b>0?"to receive":b<0?"owes":"settled"})`,22,y);y+=7;});
     doc.save(`finsplit-${trip.name.replace(/\s+/g,"-")}.pdf`);
@@ -488,7 +492,6 @@ function exportPDF(){
   }catch(e){console.error(e);toast("PDF generation failed","error");}
 }
 
-// ── EXPORT CSV ──
 function exportCSV(){
   const curr=getCurrency();
   const rows=[["Date","Description","Activity","Amount","Currency","Paid By","Participants","Notes"]];
@@ -500,7 +503,6 @@ function exportCSV(){
   toast("CSV downloaded!","success");
 }
 
-// ── MODALS ──
 function rExpModal(){
   const today=new Date().toISOString().split("T")[0];
   const names=approvedNames();
@@ -524,7 +526,6 @@ function rEditTripModal(){
   return`<div class="overlay" id="ov"><div class="modal" style="max-width:480px"><div class="modal-hd">Edit Trip Details <button class="x-btn" id="b-close">✕</button></div><div class="form-grid"><div class="fg full"><label>Trip Name *</label><input id="et-name" value="${trip.name}"/></div><div class="fg"><label>Start Date</label><input id="et-s" type="date" value="${trip.startDate||""}"/></div><div class="fg"><label>End Date</label><input id="et-e" type="date" value="${trip.endDate||""}"/></div><div class="fg full"><label>Currency</label><select id="et-curr">${CURRENCIES.map(c=>`<option value="${c.code}"${c.code===(trip.currency||"CAD")?" selected":""}>${c.code} — ${c.name} (${c.symbol})</option>`).join("")}</select></div><div class="fg full"><label>Description</label><input id="et-d" value="${trip.description||""}"/></div><div class="fg full"><button class="btn btn-primary" id="b-save-edit-trip" style="width:100%;padding:10px;justify-content:center">Save Changes</button></div></div></div></div>`;
 }
 
-// ── BIND ──
 function bindTrip(){
   document.querySelectorAll(".tab[data-tab]").forEach(t=>t.addEventListener("click",()=>{tab=t.dataset.tab;renderTrip();}));
   document.querySelectorAll("[data-af]").forEach(p=>p.addEventListener("click",()=>{actFil=p.dataset.af;renderTrip();}));
@@ -537,7 +538,7 @@ function bindTrip(){
   document.getElementById("b-copy")?.addEventListener("click",copyLink);
   document.querySelectorAll(".check-chip[data-m]").forEach(c=>c.addEventListener("click",()=>c.classList.toggle("on")));
 
-  // Save new expense
+  // ── FIX 3: modal closes after save — renderTrip() called after await ──
   document.getElementById("b-saveexp")?.addEventListener("click",async()=>{
     const desc=document.getElementById("e-desc").value.trim();
     const amt=parseFloat(document.getElementById("e-amt").value);
@@ -550,13 +551,13 @@ function bindTrip(){
     if(!pp.length){toast("Select at least one participant","error");return;}
     const id=genId();
     await setDoc(subDoc(trip.id,"expenses",id),{id,description:desc,amount:amt,date,paidBy:paid,activity:act,notes,participants:pp,createdAt:new Date().toISOString()});
-    modal=null;toast("Expense saved","success");
+    modal=null;
+    renderTrip(); // explicitly re-render to close modal
+    toast("Expense saved","success");
   });
 
-  // Edit expense — open modal
   document.querySelectorAll("[data-edit]").forEach(b=>b.addEventListener("click",()=>{modal="edit-expense:"+b.dataset.edit;renderTrip();}));
 
-  // Save edited expense
   document.getElementById("b-savedit")?.addEventListener("click",async()=>{
     const eid=document.getElementById("b-savedit").dataset.eid;
     const desc=document.getElementById("ee-desc").value.trim();
@@ -569,22 +570,27 @@ function bindTrip(){
     if(!desc||isNaN(amt)||amt<=0){toast("Enter description and amount","error");return;}
     if(!pp.length){toast("Select at least one participant","error");return;}
     await updateDoc(subDoc(trip.id,"expenses",eid),{description:desc,amount:amt,date,paidBy:paid,activity:act,notes,participants:pp,updatedAt:new Date().toISOString()});
-    modal=null;toast("Expense updated","success");
+    modal=null;
+    renderTrip(); // explicitly re-render to close modal
+    toast("Expense updated","success");
   });
 
-  // Save activity
   document.getElementById("b-saveact")?.addEventListener("click",async()=>{
     const name=document.getElementById("a-name").value.trim();
     const icon=document.getElementById("a-icon").value.trim()||"💰";
     if(!name){toast("Enter activity name","error");return;}
     if(!activities.find(a=>a.name===name)){const id=genId();await setDoc(subDoc(trip.id,"activities",id),{id,name,icon,createdAt:new Date().toISOString()});}
-    modal=null;toast("Activity created","success");
+    modal=null;
+    renderTrip();
+    toast("Activity created","success");
   });
 
-  // Delete expense
-  document.querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click",async()=>{await deleteDoc(subDoc(trip.id,"expenses",b.dataset.del));toast("Removed","info");}));
+  document.querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click",async()=>{
+    await deleteDoc(subDoc(trip.id,"expenses",b.dataset.del));
+    toast("Removed","info");
+  }));
 
-  // Mark settlement — any member can mark done
+  // Mark settlement done
   document.querySelectorAll("[data-settle-from]").forEach(b=>b.addEventListener("click",async()=>{
     const from=b.dataset.settleFrom,to=b.dataset.settleTo;
     const id=genId();
@@ -592,8 +598,16 @@ function bindTrip(){
     toast("Marked as done","success");
   }));
 
-  // Approve / kick member
-  document.querySelectorAll("[data-approve]").forEach(b=>b.addEventListener("click",async()=>{await updateDoc(subDoc(trip.id,"members",b.dataset.approve),{status:"approved"});toast("Member approved","success");}));
+  // ── FIX 1: Undo settlement — delete the settlement doc ──
+  document.querySelectorAll("[data-undo-settle]").forEach(b=>b.addEventListener("click",async()=>{
+    await deleteDoc(subDoc(trip.id,"settlements",b.dataset.undoSettle));
+    toast("Settlement undone","info");
+  }));
+
+  document.querySelectorAll("[data-approve]").forEach(b=>b.addEventListener("click",async()=>{
+    await updateDoc(subDoc(trip.id,"members",b.dataset.approve),{status:"approved"});
+    toast("Member approved","success");
+  }));
   document.querySelectorAll("[data-kick]").forEach(b=>b.addEventListener("click",async()=>{
     const m=members.find(x=>x.id===b.dataset.kick);
     await deleteDoc(subDoc(trip.id,"members",b.dataset.kick));
@@ -601,17 +615,17 @@ function bindTrip(){
     toast("Member removed","info");
   }));
 
-  // Save edit trip
   document.getElementById("b-save-edit-trip")?.addEventListener("click",async()=>{
     const name=document.getElementById("et-name").value.trim();
     if(!name){toast("Enter a trip name","error");return;}
     const updates={name,startDate:document.getElementById("et-s").value,endDate:document.getElementById("et-e").value,currency:document.getElementById("et-curr").value,description:document.getElementById("et-d").value.trim()};
     await updateDoc(tRef(trip.id),updates);
     Object.assign(trip,updates);
-    modal=null;toast("Trip updated","success");
+    modal=null;
+    renderTrip();
+    toast("Trip updated","success");
   });
 
-  // Delete trip
   document.getElementById("b-do-reset")?.addEventListener("click",async()=>{
     const val=document.getElementById("reset-confirm")?.value.trim();
     if(val!=="DELETE"){toast("Type DELETE in capitals","error");return;}
