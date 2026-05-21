@@ -122,14 +122,7 @@ async function loadMyTrips(){
   s2.forEach(d=>{if(!seen.has(d.id)){seen.add(d.id);myTrips.push({id:d.id,...d.data()});}});
 }
 
-let _homeRendering=false;
 async function renderHome(){
-  if(_homeRendering)return;
-  _homeRendering=true;
-  try{ await _renderHome(); } finally{ _homeRendering=false; }
-}
-
-async function _renderHome(){
   rAuthBar();showScreen("screen-home");
   document.getElementById("home-greeting").textContent=`Welcome, ${(user.displayName||user.email).split(" ")[0]}`;
   // Clear grid immediately before async fetch — prevents stale renders showing
