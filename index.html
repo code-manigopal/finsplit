@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>FinSplit — Split Trip Expenses</title>
+<title>SplitFree — Split Trip Expenses</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -189,7 +189,7 @@ textarea{resize:vertical;min-height:64px}
   <div class="logo" id="logo-home" onclick="window._goHome()">
     <div class="logo-mark">⚖️</div>
     <div>
-      <div class="logo-name">Fin<span>Split</span></div>
+      <div class="logo-name">Split<span>Free</span></div>
       <div class="logo-tag">Trip Expense Tracker</div>
     </div>
   </div>
@@ -204,14 +204,14 @@ textarea{resize:vertical;min-height:64px}
       <div class="spin-dot" style="animation-delay:.15s"></div>
       <div class="spin-dot" style="animation-delay:.3s"></div>
     </div>
-    <div style="font-size:13px;color:var(--text3);font-family:'DM Mono',monospace">Loading FinSplit…</div>
+    <div style="font-size:13px;color:var(--text3);font-family:'DM Mono',monospace">Loading SplitFree…</div>
   </div>
 </div>
 
 <div id="screen-signin" class="screen">
   <div class="center-outer">
     <div class="auth-card">
-      <div class="auth-head"><h1>Welcome to FinSplit</h1><p>Split trip expenses fairly with your group</p></div>
+      <div class="auth-head"><h1>Welcome to SplitFree</h1><p>Split trip expenses fairly with your group</p></div>
       <div class="auth-body">
         <p style="font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.7">Sign in with Google to create a trip or join one via a shared link.</p>
         <button class="google-btn" id="b-gsi">
@@ -783,7 +783,7 @@ function exportPDF(){
     const curr=getCurrency();
     let y=20;
     doc.setFontSize(18);doc.setTextColor(0,179,134);
-    doc.text("FinSplit — Trip Report",20,y);y+=10;
+    doc.text("SplitFree — Trip Report",20,y);y+=10;
     doc.setFontSize(12);doc.setTextColor(90,100,120);
     doc.text(`${trip.name} · ${[trip.startDate,trip.endDate].filter(Boolean).join(" → ")||"No dates"}`,20,y);y+=6;
     doc.text(`Currency: ${curr.code} (${curr.symbol}) · Generated: ${new Date().toLocaleDateString()}`,20,y);y+=12;
@@ -808,7 +808,7 @@ function exportPDF(){
     doc.text("Member Balances",20,y);y+=8;
     doc.setFontSize(10);doc.setTextColor(90,100,120);
     approvedNames().forEach(n=>{if(y>270){doc.addPage();y=20;}const b=netBal(n);doc.text(`${n}: ${b>=0?"+":""}${curr.symbol}${Math.abs(b).toFixed(2)} (${b>0?"to receive":b<0?"owes":"settled"})`,22,y);y+=7;});
-    doc.save(`finsplit-${trip.name.replace(/\s+/g,"-")}.pdf`);
+    doc.save(`splitfree-${trip.name.replace(/\s+/g,"-")}.pdf`);
     toast("PDF downloaded!","success");
   }catch(e){console.error(e);toast("PDF generation failed","error");}
 }
@@ -821,7 +821,7 @@ function exportCSV(){
   const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
   const blob=new Blob([csv],{type:"text/csv"});
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);
-  a.download=`finsplit-${trip.name.replace(/\s+/g,"-")}.csv`;a.click();
+  a.download=`splitfree-${trip.name.replace(/\s+/g,"-")}.csv`;a.click();
   toast("CSV downloaded!","success");
 }
 
@@ -968,7 +968,7 @@ onAuthStateChanged(auth,async u=>{
 </script>
 
 <footer style="text-align:center;padding:14px 28px;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;border-top:1px solid var(--border);background:var(--surface);position:fixed;bottom:0;left:0;right:0;z-index:50">
-  FinSplit · Split trip expenses fairly · Powered by Firebase · Vibe coded by Kanaga Manikandan Gopal
+  SplitFree · Split trip expenses fairly · Powered by Firebase · Vibe coded by Kanaga Manikandan Gopal
 </footer>
 </body>
 </html>
