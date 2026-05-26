@@ -1,4 +1,4 @@
-# SplitFree — Trip Expense Tracker
+# SplitFree - Trip Expense Tracker
 
 SplitFree is a lightweight, real-time web application designed to help groups seamlessly track, split, and settle shared expenses during trips. It eliminates the friction of manual math by providing smart settlement algorithms, visual analytics, and easy export options.
 
