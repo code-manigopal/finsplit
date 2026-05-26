@@ -1,0 +1,151 @@
+# SplitFree — Conversation Log
+> A record of what was built, decided and fixed in this thread.
+> Use this to continue in a new Claude thread.
+
+---
+
+## How to Resume
+Share this file in a new thread and say:
+> "Here's my project log. I want to continue building SplitFree. Current task: [what you want]"
+> Also share your latest index.html as a document.
+
+---
+
+## The App
+**SplitFree** — A trip expense splitting web app (like Splitwise but free, group-trip focused, and invite-link based). Single HTML file, Firebase backend, hosted on GitHub Pages.
+
+---
+
+## Conversation Summary
+
+**You:** Can admin setup a new trip and share a link so members can join?
+**Claude:** Yes — built multi-trip architecture with shareable invite links per trip.
+
+**You:** Logically, whoever creates the trip should be admin right?
+**Claude:** Correct — whoever creates the trip becomes admin. Signing in alone doesn't make you admin. Explained the WhatsApp group analogy.
+
+**You:** If I create a new GitHub repo for this, do I need to update Firebase domain?
+**Claude:** No — same domain `code-manigopal.github.io`, Firebase doesn't need changes.
+
+**You:** Created the repo and placeholder page is live.
+**Claude:** Built the full FinSplit app — multi-trip, shareable links, Google Sign-In, approval flow, expenses, settlements, real-time updates.
+
+**You:** Will uploading new code affect existing Firestore data?
+**Claude:** No — code changes are frontend only. Firestore data is untouched.
+
+**You:** When signing in, Google shows Firebase app URL not FinSplit.
+**Claude:** Explained how to update OAuth consent screen in Google Cloud Console with the app name and logo.
+
+**You:** Please share the PNG logo file.
+**Claude:** Generated a 500x500 teal PNG with scales icon and "FinSplit" text.
+
+**You:** App is working! (screenshot shared)
+**Claude:** Confirmed settlement math is correct. Explained the algorithm in layman terms.
+
+**You:** Is the logic correct? (explained with real trip data)
+**Claude:** Walked through each expense, confirmed all settlement transfers are mathematically correct.
+
+**You:** No one will have a loss right?
+**Claude:** Confirmed — everyone pays exactly their fair share, no more no less.
+
+**You:** What's the algorithm? Explain simply.
+**Claude:** Explained minimum transactions greedy algorithm — collapse to net balances, match biggest debtor to biggest creditor, repeat.
+
+**You:** What features are outstanding vs Splitwise?
+**Claude:** Listed missing features — edit expense, unequal splits, export, charts, archive, notifications etc.
+
+**You:** Unequal splits — does that mean current logic is wrong?
+**Claude:** No — current equal split is correct. Unequal splits are an edge case, not needed for group trips.
+
+**You:** Unequal splits are not ethical on group trips.
+**Claude:** Agreed — group trips should always split equally. Include/exclude is sufficient. FinSplit's philosophy: equal sharing.
+
+**You:** Create a checkbox list so I can select features to build.
+**Claude:** Built interactive feature checklist widget with difficulty badges.
+
+**You:** Selected features + Finalytics tab idea + currency per trip.
+**Claude:** Built: Finalytics tab (charts, stat cards, export), currency selection at trip creation, edit expense, members can mark settlement done, export PDF/CSV, archive trip, edit trip details.
+
+**You:** Edit button not working. No modify trip option.
+**Claude:** Fixed edit expense modal trigger (startsWith bug). Moved Edit Trip button to topbar, visible always for admin.
+
+**You:** Whenever refreshing, sign-in screen flashes briefly.
+**Claude:** Added loading screen with bouncing dots animation — shows until Firebase confirms auth state.
+
+**You:** Footer should be at the bottom.
+**Claude:** Made footer `position:fixed` at bottom of viewport.
+
+**You:** Once marked as done, can we undo?
+**Claude:** Added ↩ Undo button on completed settlements. Only visible to person who marked it (or admin).
+
+**You:** Member unable to modify/delete their expense. Also can't choose participants.
+**Claude:** Fixed — members can delete their own expenses. Fixed check chip double-toggle bug (label+input double fire).
+
+**You:** Apply warm red/orange/gold/cream palette.
+**Claude:** Applied new palette throughout — later reverted back to original teal theme on your request.
+
+**You:** Admin name not showing in participant list for members.
+**Claude:** Fixed — `approvedNames()` now always includes `trip.adminName` regardless of who is viewing.
+
+**You:** Trip duplication when coming back to My Trips.
+**Claude:** Multiple fix attempts. Final working fix:
+- `trip=null` set BEFORE `stopListener()`
+- Firestore listener guards (check tripId still matches)
+- `renderTrip()` guard (check trip not null)
+- `b-back`, `b-create-trip`, `b-toggle-archived` all use `onclick` not `addEventListener`
+
+**You:** Modal not disappearing after saving expense.
+**Claude:** Fixed — explicitly call `renderTrip()` after `modal=null` in all save handlers.
+
+**You:** Settle Up should show my transfers on top, others below.
+**Claude:** Split Settle Up tab into:
+- **Your Transfers** (top) — with Mark Done / Undo buttons
+- **Other Transfers** (bottom) — read-only, "between your friends"
+- **Your Completed Transfers** — done settlements with Undo if applicable
+
+**You:** Only the concerned member should see Mark Done button.
+**Claude:** Confirmed — already implemented. Mark Done only on your transfers. Undo only if you marked it (or admin).
+
+**You:** Rename app — give 100 alternatives to FinSplit.
+**Claude:** Provided 100 names across categories.
+
+**You:** Checked many names — SplitFree confirmed free and available.
+**Claude:** Verified SplitFree on App Store, Google Play, Google search — nothing found. Confirmed available.
+
+**You:** Rename to SplitFree.
+**Claude:** Replaced all FinSplit references throughout the code — title, logo, footer, PDF/CSV filenames.
+
+**You:** Repo URL still shows finsplit.
+**Claude:** Explained how to rename GitHub repo to splitfree. URL becomes `code-manigopal.github.io/splitfree`.
+
+**You:** Friend got "missing initial state" error on WhatsApp.
+**Claude:** Fixed — added `signInWithRedirect` fallback for WhatsApp/in-app browsers that block sessionStorage.
+
+**You:** GitHub Pages deployment failed — account suspended.
+**Claude:** Not a code issue. Advised to check GitHub settings and submit support ticket. Resolved on its own shortly after.
+
+---
+
+## Decisions Made
+- No unequal splits — group trips split equally, include/exclude only
+- No multi-currency conversion — out of scope
+- Admin = trip creator, not based on sign-in order
+- Anyone can mark settlement done (not just admin)
+- Only marker (or admin) can undo a settlement
+- Archived trips hidden by default, toggle to show
+- Delete trip fully cleans Firestore — no orphan data
+
+---
+
+## What's Left (Future Ideas)
+- Push notifications
+- Offline / PWA mode
+- Receipt photo upload
+- Friends list across trips
+- Comments on expenses
+- Trip budget vs actual tracking
+- Multi-currency with live conversion
+
+---
+
+*Built by Kanaga Manikandan Gopal · Vibe coded with Claude · 2026*
