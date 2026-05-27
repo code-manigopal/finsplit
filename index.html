@@ -150,6 +150,7 @@ textarea{resize:vertical;min-height:64px}
 .badge-admin{background:var(--teal-dim);color:var(--teal-dark);border:1px solid var(--teal-border)}
 .badge-member{background:var(--surface);color:var(--text2);border:1px solid var(--border-md)}
 .badge-pending{background:var(--amber-dim);color:var(--amber);border:1px solid var(--amber-border)}
+.badge-spectator{background:rgba(79,70,229,0.1);color:#4F46E5;border:1px solid rgba(79,70,229,0.3)}
 .overlay{position:fixed;inset:0;background:rgba(10,18,35,0.55);backdrop-filter:blur(4px);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px}
 .modal{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:24px 22px;max-width:540px;width:100%;max-height:90vh;overflow-y:auto;animation:rise .18s ease;box-shadow:var(--shadow-md)}
 @keyframes rise{from{transform:translateY(12px);opacity:0}}
@@ -349,6 +350,8 @@ const subDoc=(tid,col,id)=>doc(db,"trips",tid,col,id);
 const isAdmin=()=>trip?.createdBy===user?.email;
 const getMe=()=>members.find(m=>m.email===user?.email);
 const isPending=()=>!isAdmin()&&getMe()?.status==="pending";
+const isSpectator=()=>!isAdmin()&&getMe()?.status==="spectator";
+const canAct=()=>isAdmin()||(!isSpectator()&&getMe()?.status==="approved");
 const myName=()=>isAdmin()?(user.displayName||user.email):getMe()?.name||"";
 const approvedNames=()=>{
   const n=members.filter(m=>m.status==="approved").map(m=>m.name);
@@ -559,7 +562,7 @@ function startListener(tripId){
   stopListener();
   const us=[];
   const guard=()=>trip&&trip.id===tripId; // only render if still on this trip
-  us.push(onSnapshot(subCol(tripId,"members"),snap=>{if(!guard())return;members=snap.docs.map(d=>({id:d.id,...d.data()}));if(!isPending())renderTrip();else{showScreen("screen-pending");rAuthBar();}}));
+  us.push(onSnapshot(subCol(tripId,"members"),snap=>{if(!guard())return;members=snap.docs.map(d=>({id:d.id,...d.data()}));if(!isPending())renderTrip();else if(!isSpectator()){showScreen("screen-pending");rAuthBar();}}));
   us.push(onSnapshot(subCol(tripId,"expenses"),snap=>{if(!guard())return;expenses=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.date||"").localeCompare(b.date||""));if(!isPending())renderTrip();}));
   us.push(onSnapshot(subCol(tripId,"activities"),snap=>{if(!guard())return;if(snap.docs.length)activities=snap.docs.map(d=>({id:d.id,...d.data()}));if(!isPending())renderTrip();}));
   us.push(onSnapshot(subCol(tripId,"settlements"),snap=>{if(!guard())return;settlements=snap.docs.map(d=>({id:d.id,...d.data()}));if(!isPending())renderTrip();}));
@@ -568,8 +571,17 @@ function startListener(tripId){
 function stopListener(){if(unsubTrip){unsubTrip();unsubTrip=null;}}
 
 function renderTrip(){
-  if(!trip)return; // guard — user navigated away
+  if(!trip)return;
   rAuthBar();showScreen("screen-trip");
+  const oldBanner=document.getElementById("spectator-banner");
+  if(oldBanner)oldBanner.remove();
+  if(isSpectator()){
+    const b=document.createElement("div");
+    b.id="spectator-banner";
+    b.style.cssText="background:rgba(79,70,229,0.08);border-bottom:1px solid rgba(79,70,229,0.2);padding:8px 28px;font-size:12px;color:#4F46E5;font-weight:500;text-align:center;";
+    b.textContent="👁 You are viewing this trip as a spectator — read only";
+    document.querySelector(".trip-topbar")?.insertAdjacentElement("afterend",b);
+  }
   document.getElementById("trip-name-hd").textContent=trip.name;
   document.getElementById("trip-dates-hd").textContent=[trip.startDate,trip.endDate].filter(Boolean).join(" → ")||"No dates set";
   document.getElementById("kpi-strip").innerHTML=rKPI();
@@ -619,7 +631,7 @@ function rKPI(){
   const myBal=netBal(mn);
   const txns=calcSettlements();
   const pend=txns.filter(t=>!isDone(t.from,t.to)).length;
-  const approved=members.filter(m=>m.status==="approved").length+(isAdmin()?1:0);
+  const approved=members.filter(m=>m.status==="approved"||m.status==="spectator").length+(isAdmin()?1:0);
   const curr=fmtLabel();
   return`<div class="kpi-grid">
     <div class="kpi teal"><div class="kl">Total Spent</div><div class="kv">${fmt(total)}</div><div class="ks">${expenses.length} expenses · ${curr}</div></div>
@@ -644,18 +656,18 @@ function rDash(){
   const names=approvedNames();const maxB=Math.max(...names.map(n=>Math.abs(netBal(n))),1);
   const mRows=names.map(n=>{const b=netBal(n);return`<div class="bal-row"><span class="bal-name">${n}</span><div class="bar-wrap"><div class="bar-fill" style="width:${(Math.abs(b)/maxB*100).toFixed(1)}%;background:${b>=0?"#16a34a":"var(--red)"}"></div></div><span class="bal-num" style="color:${b>=0?"#15803d":"var(--red)"}">${b>=0?"+":""}${fmt(b)}</span></div>`;}).join("")||`<div class="empty" style="padding:12px 0"><p>No approved members yet</p></div>`;
   const recent=[...expenses].reverse().slice(0,5);
-  return`<div class="two-col"><div class="sc"><div class="sc-title">Spending by Activity</div>${aRows}</div><div class="sc"><div class="sc-title">Member Balances</div>${mRows}</div></div><div class="sc"><div class="sec-hd"><div class="sec-title">Recent Expenses</div><button class="btn btn-primary btn-sm" id="b-addexp">+ Add Expense</button></div>${recent.length?recent.map(rRow).join(""):`<div class="empty"><div class="empty-icon">💸</div><p>No expenses yet</p></div>`}</div>`;
+  return`<div class="two-col"><div class="sc"><div class="sc-title">Spending by Activity</div>${aRows}</div><div class="sc"><div class="sc-title">Member Balances</div>${mRows}</div></div><div class="sc"><div class="sec-hd"><div class="sec-title">Recent Expenses</div>${canAct()?`<button class="btn btn-primary btn-sm" id="b-addexp">+ Add Expense</button>`:""}</div>${recent.length?recent.map(rRow).join(""):`<div class="empty"><div class="empty-icon">💸</div><p>No expenses yet</p></div>`}</div>`;
 }
 
 // ── EXPENSES ──
 function rExp(){
   const fil=actFil==="All"?expenses:expenses.filter(e=>e.activity===actFil);
-  return`<div class="sec-hd"><div class="sec-title">All Expenses</div><button class="btn btn-primary btn-sm" id="b-addexp">+ Add Expense</button></div><div class="pills"><div class="pill${actFil==="All"?" active":""}" data-af="All">All</div>${activities.map(a=>`<div class="pill${actFil===a.name?" active":""}" data-af="${a.name}">${a.icon||"💰"} ${a.name}</div>`).join("")}${isAdmin()?`<div class="pill" style="border-style:dashed" id="b-addact">+ Activity</div>`:""}</div><div class="sc">${fil.length?[...fil].reverse().map(rRow).join(""):`<div class="empty"><div class="empty-icon">💸</div><p>No expenses here yet</p></div>`}</div>`;
+  return`<div class="sec-hd"><div class="sec-title">All Expenses</div>${canAct()?`<button class="btn btn-primary btn-sm" id="b-addexp">+ Add Expense</button>`:""}</div><div class="pills"><div class="pill${actFil==="All"?" active":""}" data-af="All">All</div>${activities.map(a=>`<div class="pill${actFil===a.name?" active":""}" data-af="${a.name}">${a.icon||"💰"} ${a.name}</div>`).join("")}${isAdmin()?`<div class="pill" style="border-style:dashed" id="b-addact">+ Activity</div>`:""}</div><div class="sc">${fil.length?[...fil].reverse().map(rRow).join(""):`<div class="empty"><div class="empty-icon">💸</div><p>No expenses here yet</p></div>`}</div>`;
 }
 
 function rRow(e){
   const pp=e.participants||approvedNames(),sh=(e.amount/pp.length).toFixed(2);
-  const canEdit=isAdmin()||e.paidBy===myName();
+  const canEdit=canAct()&&(isAdmin()||e.paidBy===myName());
   return`<div class="exp-row"><div class="exp-icon">${ICON(e.activity)}</div><div class="exp-body"><div class="exp-name">${e.description}<span class="exp-tag">${e.activity}</span></div><div class="exp-meta">Paid by ${e.paidBy} · ${e.date} · ${pp.length} people</div><div class="exp-meta">👥 ${pp.join(", ")}</div>${e.notes?`<div class="exp-meta" style="color:var(--text3);font-style:italic">${e.notes}</div>`:""}</div><div class="exp-right"><div class="exp-amt">${fmt(e.amount)}</div><div class="exp-per">${getCurrency().symbol}${sh}/person · ${fmtLabel()}</div>${canEdit?`<div style="display:flex;gap:4px;margin-top:5px;justify-content:flex-end"><button class="btn btn-ghost btn-sm" data-edit="${e.id}">✏️ Edit</button><button class="btn btn-danger btn-sm" data-del="${e.id}">✕</button></div>`:""}</div></div>`;
 }
 
@@ -673,7 +685,7 @@ function rSettle(){
   const renderPendRow=(t,showBtn)=>`<div class="settle-row">
     <span class="settle-from">${t.from}</span><span class="settle-arrow"> → </span><span class="settle-to">${t.to}</span>
     <span class="settle-amt">${fmt(t.amount)}</span>
-    ${showBtn?`<button class="btn btn-green btn-sm" data-settle-from="${t.from}" data-settle-to="${t.to}">✓ Mark Done</button>`:""}
+    ${showBtn&&canAct()?`<button class="btn btn-green btn-sm" data-settle-from="${t.from}" data-settle-to="${t.to}">✓ Mark Done</button>`:""}
   </div>`;
 
   const renderDoneRow=(t,showUndo)=>{
@@ -715,9 +727,10 @@ function rSettle(){
 // ── MEMBERS ──
 function rMembers(){
   const approved=members.filter(m=>m.status==="approved");
+  const spectators=members.filter(m=>m.status==="spectator");
   const pending=members.filter(m=>m.status==="pending");
   const url=shareUrl(trip.id);
-  return`<div class="sc"><div class="share-box"><p>🔗 Share this link to invite people to <strong>${trip.name}</strong></p><div class="share-link"><input type="text" value="${url}" readonly/><button class="btn btn-primary btn-sm" id="b-copy">Copy</button></div></div><div class="sc-title">Trip Members <span class="sc-sub">${approved.length+(isAdmin()?1:0)} approved</span></div>${isAdmin()?`<div class="member-row"><div class="m-left"><div class="m-avatar">${trip.adminPhoto?`<img src="${trip.adminPhoto}" style="width:100%;height:100%;object-fit:cover">`:""}</div><div><div class="m-name">${trip.adminName}<span class="badge badge-admin">Admin</span></div><div class="m-email">${trip.createdBy}</div></div></div></div>`:""}${approved.map(m=>{const b=netBal(m.name);const paid=expenses.filter(e=>e.paidBy===m.name).reduce((s,e)=>s+e.amount,0);return`<div class="member-row"><div class="m-left"><div class="m-avatar">${m.photo?`<img src="${m.photo}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentNode.textContent='👤'">`:""}</div><div><div class="m-name">${m.name}<span class="badge badge-member">Member</span></div><div class="m-email">${m.email} · paid ${fmt(paid)}</div></div></div><div style="display:flex;align-items:center;gap:8px"><div style="text-align:right"><div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:${b>=0?"#15803d":"var(--red)"}">${b>=0?"+":""}${fmt(b)}</div><div style="font-size:11px;color:var(--text3)">${b>0?"to receive":b<0?"owes":"even"}</div></div>${isAdmin()?`<button class="btn btn-danger btn-sm" data-kick="${m.id}">Remove</button>`:""}</div></div>`;}).join("")}${!approved.length&&!isAdmin()?`<div class="empty" style="padding:14px 0"><p>No approved members yet</p></div>`:""}</div>${isAdmin()&&pending.length?`<div class="sc" style="border-color:var(--amber-border)"><div class="sc-title" style="color:var(--amber)">Pending Approval <span class="sc-sub">${pending.length} waiting</span></div><div class="info-note" style="background:var(--amber-dim);border-color:var(--amber-border);color:var(--amber)">These people joined via your link and are waiting for approval.</div>${pending.map(m=>`<div class="member-row"><div class="m-left"><div class="m-avatar">${m.photo?`<img src="${m.photo}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentNode.textContent='👤'">`:""}</div><div><div class="m-name">${m.name}<span class="badge badge-pending">Pending</span></div><div class="m-email">${m.email}</div></div></div><div style="display:flex;gap:6px"><button class="btn btn-green btn-sm" data-approve="${m.id}">✓ Approve</button><button class="btn btn-danger btn-sm" data-kick="${m.id}">✕ Reject</button></div></div>`).join("")}</div>`:""}${isAdmin()?`<div class="danger-zone"><div class="dz-title">⚠ Danger Zone</div><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:10px"><div><div style="font-size:13px;font-weight:600;color:var(--text)">Edit trip details</div><div style="font-size:12px;color:var(--text2);margin-top:2px">Change name, dates, description</div></div><button class="btn btn-ghost btn-sm" id="b-edit-trip">✏️ Edit</button></div><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px"><div><div style="font-size:13px;font-weight:600;color:var(--text)">Delete this trip</div><div style="font-size:12px;color:var(--text2);margin-top:2px">Permanently deletes all data.</div></div><button class="btn btn-danger btn-sm" id="b-reset">🗑 Delete Trip</button></div></div>`:""}`;
+  return`<div class="sc"><div class="share-box"><p>🔗 Share this link to invite people to <strong>${trip.name}</strong></p><div class="share-link"><input type="text" value="${url}" readonly/><button class="btn btn-primary btn-sm" id="b-copy">Copy</button></div></div><div class="sc-title">Trip Members <span class="sc-sub">${approved.length+(isAdmin()?1:0)} approved</span></div>${isAdmin()?`<div class="member-row"><div class="m-left"><div class="m-avatar">${trip.adminPhoto?`<img src="${trip.adminPhoto}" style="width:100%;height:100%;object-fit:cover">`:""}</div><div><div class="m-name">${trip.adminName}<span class="badge badge-admin">Admin</span></div><div class="m-email">${trip.createdBy}</div></div></div></div>`:""}${approved.map(m=>{const b=netBal(m.name);const paid=expenses.filter(e=>e.paidBy===m.name).reduce((s,e)=>s+e.amount,0);return`<div class="member-row"><div class="m-left"><div class="m-avatar">${m.photo?`<img src="${m.photo}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentNode.textContent='👤'">`:""}</div><div><div class="m-name">${m.name}<span class="badge badge-member">Member</span></div><div class="m-email">${m.email} · paid ${fmt(paid)}</div></div></div><div style="display:flex;align-items:center;gap:8px"><div style="text-align:right"><div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:${b>=0?"#15803d":"var(--red)"}">${b>=0?"+":""}${fmt(b)}</div><div style="font-size:11px;color:var(--text3)">${b>0?"to receive":b<0?"owes":"even"}</div></div>${isAdmin()?`<button class="btn btn-danger btn-sm" data-kick="${m.id}">Remove</button>`:""}</div></div>`;}).join("")}${!approved.length&&!isAdmin()?`<div class="empty" style="padding:14px 0"><p>No approved members yet</p></div>`:""}${spectators.length?`<div class="divider"></div><div class="sc-title">👁 Spectators <span class="sc-sub">${spectators.length}</span></div>${spectators.map(m=>`<div class="member-row"><div class="m-left"><div class="m-avatar">${m.photo?`<img src="${m.photo}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentNode.textContent='👁'">`:""}</div><div><div class="m-name">${m.name}<span class="badge badge-spectator">Spectator</span></div><div class="m-email">${m.email}</div></div></div><div>${isAdmin()?`<button class="btn btn-danger btn-sm" data-kick="${m.id}">Remove</button>`:""}</div></div>`).join("")}`:""}</div>${isAdmin()&&pending.length?`<div class="sc" style="border-color:var(--amber-border)"><div class="sc-title" style="color:var(--amber)">Pending Approval <span class="sc-sub">${pending.length} waiting</span></div><div class="info-note" style="background:var(--amber-dim);border-color:var(--amber-border);color:var(--amber)">These people joined via your link and are waiting for approval.</div>${pending.map(m=>`<div class="member-row"><div class="m-left"><div class="m-avatar">${m.photo?`<img src="${m.photo}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentNode.textContent='👤'">`:""}</div><div><div class="m-name">${m.name}<span class="badge badge-pending">Pending</span></div><div class="m-email">${m.email}</div></div></div><div style="display:flex;gap:6px"><button class="btn btn-green btn-sm" data-approve="${m.id}">✓ Member</button><button class="btn btn-ghost btn-sm" data-spectate="${m.id}">👁 Spectator</button><button class="btn btn-danger btn-sm" data-kick="${m.id}">✕ Reject</button></div></div>`).join("")}</div>`:""}${isAdmin()?`<div class="danger-zone"><div class="dz-title">⚠ Danger Zone</div><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:10px"><div><div style="font-size:13px;font-weight:600;color:var(--text)">Edit trip details</div><div style="font-size:12px;color:var(--text2);margin-top:2px">Change name, dates, description</div></div><button class="btn btn-ghost btn-sm" id="b-edit-trip">✏️ Edit</button></div><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px"><div><div style="font-size:13px;font-weight:600;color:var(--text)">Delete this trip</div><div style="font-size:12px;color:var(--text2);margin-top:2px">Permanently deletes all data.</div></div><button class="btn btn-danger btn-sm" id="b-reset">🗑 Delete Trip</button></div></div>`:""}`;
 }
 
 // ── FINALYTICS ──
@@ -923,8 +936,10 @@ function bindTrip(){
     toast("Marked as done","success");
   }));
 
-  // Approve / kick member
+  // Approve as member
   document.querySelectorAll("[data-approve]").forEach(b=>b.addEventListener("click",async()=>{await updateDoc(subDoc(trip.id,"members",b.dataset.approve),{status:"approved"});toast("Member approved","success");}));
+  // Approve as spectator
+  document.querySelectorAll("[data-spectate]").forEach(b=>b.addEventListener("click",async()=>{await updateDoc(subDoc(trip.id,"members",b.dataset.spectate),{status:"spectator"});toast("Approved as spectator","success");}));
   document.querySelectorAll("[data-kick]").forEach(b=>b.addEventListener("click",async()=>{
     const m=members.find(x=>x.id===b.dataset.kick);
     await deleteDoc(subDoc(trip.id,"members",b.dataset.kick));
@@ -960,7 +975,11 @@ window._goHome=()=>{stopListener();goHome();};
 
 onAuthStateChanged(auth,async u=>{
   user=u;rAuthBar();
-  if(!u){showScreen("screen-signin");document.getElementById("b-gsi")?.addEventListener("click",doSignIn);return;}
+  if(!u){
+    showScreen("screen-signin");
+    document.getElementById("b-gsi")?.addEventListener("click",doSignIn);
+    return;
+  }
   const tripId=tripIdFromUrl();
   if(tripId)await openTrip(tripId);
   else await renderHome();
