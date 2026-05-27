@@ -631,7 +631,8 @@ function rKPI(){
   const myBal=netBal(mn);
   const txns=calcSettlements();
   const pend=txns.filter(t=>!isDone(t.from,t.to)).length;
-  const approved=members.filter(m=>m.status==="approved"||m.status==="spectator").length+(isAdmin()?1:0);
+  const approved=members.filter(m=>m.status==="approved").length+(isAdmin()?1:0);
+  const spectatorCount=members.filter(m=>m.status==="spectator").length;
   const curr=fmtLabel();
   return`<div class="kpi-grid">
     <div class="kpi teal"><div class="kl">Total Spent</div><div class="kv">${fmt(total)}</div><div class="ks">${expenses.length} expenses · ${curr}</div></div>
@@ -639,6 +640,7 @@ function rKPI(){
     <div class="kpi ${myBal>=0?'green':'red'}"><div class="kl">Your Balance</div><div class="kv">${myBal>=0?'+':''}${fmt(myBal)}</div><div class="ks">${myBal>0?'to receive':myBal<0?'you owe':'all even'}</div></div>
     <div class="kpi ${pend>0?'amber':'green'}"><div class="kl">Pending</div><div class="kv">${pend}</div><div class="ks">transfers left</div></div>
     <div class="kpi gray"><div class="kl">Members</div><div class="kv">${approved}</div><div class="ks">${members.filter(m=>m.status==="pending").length} pending</div></div>
+    ${spectatorCount?`<div class="kpi gray"><div class="kl">Spectators</div><div class="kv">${spectatorCount}</div><div class="ks">watching</div></div>`:""}
   </div>`;
 }
 
